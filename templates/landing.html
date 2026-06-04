@@ -47,6 +47,55 @@
     .fib-pink   { background: #e8637a; }
     .feature-title { color: #ffffff; font-size: 1rem;   font-weight: 600; margin-bottom: 0.35rem; }
     .feature-body  { color: #888888; font-size: 0.875rem; line-height: 1.6; }
+
+    /* ── Video modal ── */
+    .video-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.75);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .video-modal-overlay.is-open { display: flex; }
+    .video-modal-box {
+        position: relative;
+        width: 90%;
+        max-width: 860px;
+    }
+    .video-wrapper {
+        position: relative;
+        padding-bottom: 56.25%;
+        height: 0;
+        overflow: hidden;
+        border-radius: 12px;
+        background: #000;
+    }
+    .video-wrapper iframe {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        border: 0;
+    }
+    .video-modal-close {
+        position: absolute;
+        top: -40px;
+        right: 0;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(255, 255, 255, 0.15);
+        color: #fff;
+        font-size: 1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+    }
+    .video-modal-close:hover { background: rgba(255, 255, 255, 0.3); }
 </style>
 {% endblock %}
 
@@ -79,10 +128,10 @@
 
             <div class="hero-actions">
                 <a href="{{ url_for('register') }}" class="btn-primary">Start tracking for free 🚀</a>
-                <a href="#" class="btn-play">
+                <button id="open-video" class="btn-play" type="button">
                     <span class="btn-play-icon">▶</span>
                     See how it works
-                </a>
+                </button>
             </div>
 
             <!-- PLACEHOLDER: lime squiggle doodles (bottom-left, decorative).
@@ -215,4 +264,53 @@
     </div>
 </section>
 
+<!-- ═══════════════════════════════ VIDEO MODAL ════════════════════════ -->
+<div id="video-modal" class="video-modal-overlay" role="dialog" aria-modal="true" aria-label="Product demo video">
+    <div class="video-modal-box">
+        <button class="video-modal-close" id="modal-close" aria-label="Close video">✕</button>
+        <div class="video-wrapper">
+            <iframe
+                id="yt-player"
+                src="https://www.youtube.com/embed/MREoKjZ3aXo?enablejsapi=1"
+                title="See how Spendly works"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen>
+            </iframe>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        var modal    = document.getElementById('video-modal');
+        var openBtn  = document.getElementById('open-video');
+        var closeBtn = document.getElementById('modal-close');
+        var player   = document.getElementById('yt-player');
+
+        function openModal() {
+            modal.classList.add('is-open');
+        }
+
+        function closeModal() {
+            modal.classList.remove('is-open');
+            player.contentWindow.postMessage(
+                '{"event":"command","func":"pauseVideo","args":""}', '*'
+            );
+        }
+
+        openBtn.addEventListener('click', openModal);
+        closeBtn.addEventListener('click', closeModal);
+
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) closeModal();
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modal.classList.contains('is-open')) closeModal();
+        });
+    }());
+</script>
 {% endblock %}
