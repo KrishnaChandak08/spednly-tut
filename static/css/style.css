@@ -113,11 +113,21 @@ a { color: inherit; text-decoration: none; }
 
 .nav-cta:hover { background: var(--accent) !important; }
 
+.nav-user { color: var(--ink-muted); font-size: 0.9rem; }
+
 /* ------------------------------------------------------------------ */
 /* Main                                                                */
 /* ------------------------------------------------------------------ */
 
-.main-content { min-height: calc(100vh - 60px - 100px); }
+@keyframes page-enter {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.main-content {
+    min-height: calc(100vh - 60px - 100px);
+    animation: page-enter 0.4s ease-out both;
+}
 
 /* ------------------------------------------------------------------ */
 /* Hero                                                                */
@@ -253,7 +263,45 @@ a { color: inherit; text-decoration: none; }
 
 .mock-dropdown { color: var(--ink-muted); }
 
-.mock-sparkline { width: 72px; height: 26px; }
+@keyframes money-fly {
+    0%   { transform: translate(-50%, -50%) translate(0, 0) scale(0.4); opacity: 1; }
+    60%  { opacity: 1; }
+    100% { transform: translate(-50%, -50%) translate(var(--tx), var(--ty)) scale(1); opacity: 0; }
+}
+
+.money-pile {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.money-bill {
+    position: absolute;
+    font-size: 1.4rem;
+    transition: transform 0.2s ease;
+}
+
+.money-bill:nth-child(1) { transform: rotate(-10deg) translate(-5px, 3px); }
+.money-bill:nth-child(2) { transform: rotate(5deg)  translate(3px, -3px); }
+.money-bill:nth-child(3) { transform: rotate(0deg)  translate(0px, 0px);  }
+
+.money-pile:hover .money-bill:nth-child(1) { transform: rotate(-14deg) translate(-7px, 5px); }
+.money-pile:hover .money-bill:nth-child(2) { transform: rotate(9deg)   translate(5px, -5px); }
+.money-pile:hover .money-bill:nth-child(3) { transform: rotate(0deg)   translate(0px, -3px); }
+
+.money-particle {
+    position: fixed;
+    font-size: 1.3rem;
+    pointer-events: none;
+    z-index: 9999;
+    animation: money-fly 0.75s ease-out forwards;
+}
 
 .mock-total {
     font-family: var(--font-display);
@@ -395,6 +443,14 @@ a { color: inherit; text-decoration: none; }
     width: 175px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     z-index: 2;
+    transition: transform 0.4s ease-in, opacity 0.4s ease-in;
+    overflow: hidden;
+}
+
+.mock-float-tip.dismissed {
+    transform: translateX(120%);
+    opacity: 0;
+    pointer-events: none;
 }
 
 .tip-header {

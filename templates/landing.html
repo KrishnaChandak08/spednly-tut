@@ -164,9 +164,11 @@
             <div class="mock-card">
                 <div class="mock-card-top">
                     <span class="mock-month">This month <span class="mock-dropdown">▾</span></span>
-                    <svg class="mock-sparkline" viewBox="0 0 80 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M0 25 Q20 5 40 18 Q60 30 80 8" stroke="#7c6fe0" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
+                    <div class="money-pile" aria-hidden="true">
+                        <span class="money-bill">💵</span>
+                        <span class="money-bill">💵</span>
+                        <span class="money-bill">💵</span>
+                    </div>
                 </div>
                 <div class="mock-total">₹12,450</div>
                 <div class="mock-meta">
@@ -213,7 +215,7 @@
             <!-- Daily tip floating card — sits below and right of the card -->
             <div class="mock-float-tip">
                 <div class="tip-header">💡 <u>Daily tip</u></div>
-                <p class="tip-body">Small savings today, big freedom tomorrow. 😎</p>
+                <p class="tip-body"></p>
                 <button class="tip-btn">Got it!</button>
             </div>
 
