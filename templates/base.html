@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block head %}{% endblock %}
+    <script>(function(){if(localStorage.getItem('theme')==='dark'){document.documentElement.setAttribute('data-theme','dark');}})();</script>
 </head>
 <body>
 
@@ -20,8 +21,38 @@
             </a>
             <div class="nav-links">
                 {% if session.get("user_id") %}
-                    <span class="nav-user">Hi, {{ session.get("user_name") }}</span>
-                    <a href="{{ url_for('logout') }}" class="nav-cta">Sign out</a>
+                    <div class="avatar-wrapper">
+                        <button class="avatar-trigger" id="avatar-btn" aria-label="Account menu">
+                            <span class="nav-greeting">Hi, {{ session.get("user_name", "").split()[0] }}</span>
+                            <span class="avatar-circle">{{ session.get("user_name", "U")[0].upper() }}</span>
+                        </button>
+                        <div class="avatar-dropdown" id="avatar-dropdown" role="menu">
+                            <div class="dropdown-header">
+                                <div class="dropdown-name">{{ session.get("user_name") }}</div>
+                                <div class="dropdown-tagline">Personal Account</div>
+                            </div>
+                            <a href="{{ url_for('profile') }}" class="dropdown-item">
+                                <span class="dropdown-item-icon">👤</span> Your Profile
+                            </a>
+                            <a href="{{ url_for('expenses') }}" class="dropdown-item">
+                                <span class="dropdown-item-icon">💸</span> My Expenses
+                            </a>
+                            <div class="dropdown-separator"></div>
+                            <label class="dropdown-item appearance-row">
+                                <span class="appearance-label">
+                                    <span class="dropdown-item-icon" id="theme-icon">🌙</span> Appearance
+                                </span>
+                                <span class="toggle-switch">
+                                    <input type="checkbox" id="dark-mode-toggle">
+                                    <span class="toggle-track"></span>
+                                </span>
+                            </label>
+                            <div class="dropdown-separator"></div>
+                            <a href="{{ url_for('logout') }}" class="dropdown-item danger">
+                                <span class="dropdown-item-icon">🚪</span> Sign out
+                            </a>
+                        </div>
+                    </div>
                 {% else %}
                     <a href="{{ url_for('login') }}">Sign in</a>
                     <a href="{{ url_for('register') }}" class="nav-cta">Get started</a>

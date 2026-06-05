@@ -1,3 +1,58 @@
+/* ------------------------------------------------------------------ */
+/* Avatar dropdown                                                     */
+/* ------------------------------------------------------------------ */
+(function () {
+    const btn      = document.getElementById('avatar-btn');
+    const dropdown = document.getElementById('avatar-dropdown');
+    if (!btn) return;
+
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        dropdown.classList.toggle('open');
+    });
+
+    dropdown.addEventListener('click', function (e) {
+        e.stopPropagation();
+    });
+
+    document.addEventListener('click', function () {
+        dropdown.classList.remove('open');
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') dropdown.classList.remove('open');
+    });
+})();
+
+/* ------------------------------------------------------------------ */
+/* Dark mode                                                           */
+/* ------------------------------------------------------------------ */
+(function () {
+    const toggle   = document.getElementById('dark-mode-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    const root     = document.documentElement;
+
+    function applyTheme(dark) {
+        root.setAttribute('data-theme', dark ? 'dark' : 'light');
+        if (toggle)    toggle.checked = dark;
+        if (themeIcon) themeIcon.textContent = dark ? '☀️' : '🌙';
+    }
+
+    applyTheme(localStorage.getItem('theme') === 'dark');
+
+    if (toggle) {
+        toggle.addEventListener('change', function () {
+            const dark = this.checked;
+            localStorage.setItem('theme', dark ? 'dark' : 'light');
+            applyTheme(dark);
+        });
+    }
+})();
+
+/* ------------------------------------------------------------------ */
+/* Tips                                                                */
+/* ------------------------------------------------------------------ */
+
 const TIPS = [
   "Track every ₹10 — small leaks sink big ships.",
   "Set a monthly budget before the month begins, not after.",
