@@ -1,4 +1,8 @@
-#Description Create a Single Dummy Indian User in the Database
+---
+description: Create a single dummy Indian user in the database
+---
+
+# Task: Create a Single Dummy Indian User in the Database
 
 ## Step 1: Analyze Database Schema
 Read `database/db.py` to understand the `users` table schema and the implementation of the `get_db()` helper.

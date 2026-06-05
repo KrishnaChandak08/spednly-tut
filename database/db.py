@@ -32,6 +32,15 @@ def init_db():
             notes       TEXT,
             created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS email_confirmations (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            new_email  TEXT    NOT NULL,
+            token      TEXT    NOT NULL UNIQUE,
+            expires_at DATETIME NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
     """)
     conn.commit()
     conn.close()
@@ -42,6 +51,86 @@ def get_user_by_email(email):
     user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
     conn.close()
     return user
+
+
+def get_user_by_id(user_id):
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    return user
+
+
+def create_email_confirmation(user_id, new_email, token, expires_at):
+    conn = get_db()
+    conn.execute("DELETE FROM email_confirmations WHERE user_id = ?", (user_id,))
+    conn.execute(
+        "INSERT INTO email_confirmations (user_id, new_email, token, expires_at) VALUES (?, ?, ?, ?)",
+        (user_id, new_email, token, expires_at),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_email_confirmation_by_token(token):
+    conn = get_db()
+    row = conn.execute(
+        "SELECT * FROM email_confirmations WHERE token = ?", (token,)
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def get_pending_email(user_id):
+    conn = get_db()
+    row = conn.execute(
+        "SELECT new_email FROM email_confirmations WHERE user_id = ?", (user_id,)
+    ).fetchone()
+    conn.close()
+    return row["new_email"] if row else None
+
+
+def clear_email_confirmation(token):
+    conn = get_db()
+    conn.execute("DELETE FROM email_confirmations WHERE token = ?", (token,))
+    conn.commit()
+    conn.close()
+
+
+def get_recent_expenses(user_id, limit=5):
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT title, amount, category, date
+           FROM expenses WHERE user_id = ?
+           ORDER BY date DESC LIMIT ?""",
+        (user_id, limit),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_category_totals(user_id):
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT category, SUM(amount) AS total
+           FROM expenses WHERE user_id = ?
+           GROUP BY category ORDER BY total DESC""",
+        (user_id,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_monthly_stats(user_id):
+    conn = get_db()
+    row = conn.execute(
+        """SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS count
+           FROM expenses
+           WHERE user_id = ?
+             AND strftime('%Y-%m', date) = strftime('%Y-%m', 'now')""",
+        (user_id,),
+    ).fetchone()
+    conn.close()
+    return row["total"], row["count"]
 
 
 def seed_db():

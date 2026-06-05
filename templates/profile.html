@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Profile — Spendly{% endblock %}
+
+{% block content %}
+<section class="profile-page">
+    <div class="profile-wrap">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if pending_email %}
+        <div class="flash flash-warning">
+            ⏳ A confirmation link was sent to <strong>{{ pending_email }}</strong>. Your email won't change until you click it.
+        </div>
+        {% endif %}
+
+        <!-- User info card -->
+        {% set name_parts = user['name'].split() %}
+        {% set initials = name_parts[0][0] ~ (name_parts[-1][0] if name_parts|length > 1 else '') %}
+        <div class="profile-card user-info-card">
+            <div class="user-info-row">
+                <div class="profile-avatar">{{ initials.upper() }}</div>
+                <div class="user-details">
+                    <div class="user-full-name">{{ user['name'] }}</div>
+                    <div class="user-email-display">{{ user['email'] }}</div>
+                    {% if member_since %}<div class="user-since">Member since {{ member_since }}</div>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Three standalone stat cards -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-card-value">₹{{ monthly_total | inr }}</div>
+                <div class="stat-card-label">Total Spent</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-value">{{ expense_count }}</div>
+                <div class="stat-card-label">Transactions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-value stat-card-value-text">{{ top_category }}</div>
+                <div class="stat-card-label">Top Category</div>
+            </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="profile-card">
+            <h2 class="profile-card-title">Recent Transactions</h2>
+            {% if recent_expenses %}
+            <table class="expense-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th class="col-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exp in recent_expenses %}
+                    <tr>
+                        <td class="exp-date">{{ exp.date | friendly_date }}</td>
+                        <td>{{ exp.title }}</td>
+                        <td><span class="cat-badge cat-{{ exp.category | lower | replace(' ', '-') }}">{{ exp.category }}</span></td>
+                        <td class="exp-amount col-right">₹{{ exp.amount | inr }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="empty-state">No expenses recorded yet.</p>
+            {% endif %}
+        </div>
+
+        <!-- Category breakdown -->
+        <div class="profile-card">
+            <h2 class="profile-card-title">Spending by Category</h2>
+            {% if category_totals %}
+                {% for cat in category_totals %}
+                <div class="cat-row">
+                    <div class="cat-row-header">
+                        <span class="cat-badge cat-{{ cat.category | lower | replace(' ', '-') }}">{{ cat.category }}</span>
+                        <span class="cat-total">₹{{ cat.total | inr }}</span>
+                    </div>
+                    <div class="cat-bar-track">
+                        <div class="cat-bar-fill" style="width: {{ (cat.total / max_cat_total * 100) | int }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <p class="empty-state">No spending data yet.</p>
+            {% endif %}
+        </div>
+
+        <!-- Edit profile -->
+        <div class="profile-card">
+            <h2 class="profile-card-title">Account Details</h2>
+            <form method="POST" action="{{ url_for('profile') }}">
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" name="name" class="form-input"
+                           value="{{ user['name'] }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" class="form-input"
+                           value="{{ user['email'] }}" required>
+                </div>
+                <button type="submit" class="btn-submit">Save Changes</button>
+            </form>
+        </div>
+
+        <!-- Change password -->
+        <div class="profile-card">
+            <h2 class="profile-card-title">Change Password</h2>
+            <form method="POST" action="{{ url_for('change_password') }}">
+                <div class="form-group">
+                    <label for="current_password">Current Password</label>
+                    <input type="password" id="current_password" name="current_password"
+                           class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="new_password">New Password</label>
+                    <input type="password" id="new_password" name="new_password"
+                           class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirm_new_password">Confirm New Password</label>
+                    <input type="password" id="confirm_new_password" name="confirm_new_password"
+                           class="form-input" required>
+                </div>
+                <button type="submit" class="btn-submit">Update Password</button>
+            </form>
+        </div>
+
+        <!-- Danger zone -->
+        <div class="profile-card danger-card">
+            <h2 class="profile-card-title danger-title">Danger Zone</h2>
+            <p class="danger-desc">
+                Permanently delete your account and all associated data.
+                This action cannot be undone.
+            </p>
+            <button type="button" class="btn-danger" id="show-delete-btn">
+                Delete Account
+            </button>
+            <form id="delete-confirm-form" method="POST"
+                  action="{{ url_for('delete_account') }}" style="display:none; margin-top:1.25rem;">
+                <div class="form-group">
+                    <label for="delete_password">Enter your password to confirm</label>
+                    <input type="password" id="delete_password" name="password"
+                           class="form-input" required>
+                </div>
+                <button type="submit" class="btn-danger">Permanently Delete My Account</button>
+            </form>
+        </div>
+
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('show-delete-btn').addEventListener('click', function () {
+        this.style.display = 'none';
+        document.getElementById('delete-confirm-form').style.display = 'block';
+    });
+</script>
+{% endblock %}
