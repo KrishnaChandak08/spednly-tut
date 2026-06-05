@@ -10,7 +10,10 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 from database.db import (
     init_db, get_db, get_user_by_email, get_user_by_id, get_monthly_stats,
-    get_recent_expenses, get_category_totals,
+    get_recent_expenses, get_category_totals, get_all_expenses,
+    get_monthly_totals, get_years_with_data, get_category_totals_for_year,
+    get_monthly_category_matrix,
+    add_expense_record, get_expense_by_id, update_expense_record, delete_expense_record,
     create_email_confirmation, get_email_confirmation_by_token,
     get_pending_email, clear_email_confirmation,
 )
@@ -22,6 +25,16 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-prod")
 @app.template_filter("inr")
 def inr_format(value):
     return "{:,.2f}".format(float(value))
+
+
+@app.template_filter("inr_compact")
+def inr_compact(value):
+    v = float(value)
+    if v >= 100000:
+        return f"₹{v/100000:.1f}L"
+    if v >= 1000:
+        return f"₹{v/1000:.1f}k"
+    return f"₹{int(v)}"
 
 
 @app.template_filter("friendly_date")
@@ -170,9 +183,103 @@ def logout():
     return redirect(url_for("landing"))
 
 
+def _group_expenses_by_month(expenses):
+    groups = []
+    index  = {}
+    for exp in expenses:
+        key = exp["date"][:7]
+        if key not in index:
+            try:
+                label = datetime.strptime(key, "%Y-%m").strftime("%B %Y")
+            except Exception:
+                label = key
+            index[key] = len(groups)
+            groups.append({"month": key, "label": label, "expenses": [], "total": 0.0})
+        g = groups[index[key]]
+        g["expenses"].append(exp)
+        g["total"] += exp["amount"]
+    return groups
+
+
 @app.route("/expenses")
 def expenses():
-    return "Expense dashboard — coming in Step 5"
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+    user_id = session["user_id"]
+
+    # Year selection (defaults to current year)
+    current_year    = datetime.now().year
+    try:
+        selected_year = int(request.args.get("year", current_year))
+    except (ValueError, TypeError):
+        selected_year = current_year
+    available_years = get_years_with_data(user_id) or [current_year]
+    if selected_year not in available_years:
+        selected_year = available_years[0]
+
+    all_expenses                 = get_all_expenses(user_id)
+    monthly_total, expense_count = get_monthly_stats(user_id)
+    category_totals              = get_category_totals(user_id)
+    top_category                 = category_totals[0]["category"] if category_totals else "—"
+    grouped_expenses             = _group_expenses_by_month(all_expenses)
+
+    # Bar chart: all 12 months of selected year, heights scaled to 120 px
+    monthly_bars = get_monthly_totals(user_id, year=selected_year)
+    bar_max = max((b["total"] for b in monthly_bars), default=0) or 1
+    for bar in monthly_bars:
+        bar["height"] = max(4, int(bar["total"] / bar_max * 120))
+
+    # Per-month change vs previous month (used in compare table)
+    for i, bar in enumerate(monthly_bars):
+        prev = monthly_bars[i - 1]["total"] if i > 0 else None
+        if prev is not None and prev > 0:
+            delta             = (bar["total"] - prev) / prev * 100
+            bar["change"]     = round(delta, 1)
+            bar["change_dir"] = "up" if delta > 0 else ("down" if delta < 0 else "flat")
+        else:
+            bar["change"]     = None
+            bar["change_dir"] = None
+
+    # MoM badge: always compares real current vs previous calendar month
+    last6         = get_monthly_totals(user_id)
+    mom_direction = None
+    mom_pct       = None
+    curr_t        = last6[-1]["total"] if last6 else 0
+    prev_t        = last6[-2]["total"] if len(last6) >= 2 else 0
+    if prev_t > 0:
+        delta         = (curr_t - prev_t) / prev_t * 100
+        mom_pct       = abs(round(delta, 1))
+        mom_direction = "up" if curr_t > prev_t else ("down" if curr_t < prev_t else "flat")
+    elif curr_t > 0:
+        mom_direction = "new"
+
+    # Compare tab: category breakdown for selected year
+    compare_categories = get_category_totals_for_year(user_id, selected_year)
+    year_total = sum(c["total"] for c in compare_categories)
+    cat_max    = compare_categories[0]["total"] if compare_categories else 1
+    for cat in compare_categories:
+        cat["bar_w"] = max(3, int(cat["total"] / cat_max * 100))
+        cat["pct"]   = round(cat["total"] / year_total * 100, 1) if year_total else 0
+
+    # Month-vs-month category matrix for interactive compare tab
+    monthly_cat_matrix = get_monthly_category_matrix(user_id, selected_year)
+
+    return render_template(
+        "expenses.html",
+        grouped_expenses=grouped_expenses,
+        monthly_total=monthly_total,
+        expense_count=expense_count,
+        top_category=top_category,
+        monthly_bars=monthly_bars,
+        mom_direction=mom_direction,
+        mom_pct=mom_pct,
+        selected_year=selected_year,
+        available_years=available_years,
+        current_year=current_year,
+        compare_categories=compare_categories,
+        year_total=year_total,
+        monthly_cat_matrix=monthly_cat_matrix,
+    )
 
 
 @app.route("/profile", methods=["GET", "POST"])
@@ -343,19 +450,129 @@ def delete_account():
     return redirect(url_for("landing"))
 
 
-@app.route("/expenses/add")
+CATEGORIES = [
+    "Food", "Transport", "Bills", "Health", "Entertainment",
+    "Shopping", "Education", "Travel", "Other",
+]
+PAYMENT_METHODS = ["Cash", "UPI", "Credit Card", "Debit Card", "Net Banking", "Wallet"]
+
+
+@app.route("/expenses/add", methods=["GET", "POST"])
 def add_expense():
-    return "Add expense — coming in Step 7"
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        title          = request.form.get("title", "").strip()
+        amount_str     = request.form.get("amount", "").strip()
+        category       = request.form.get("category", "").strip()
+        date           = request.form.get("date", "").strip()
+        payment_method = request.form.get("payment_method", "").strip()
+        notes          = request.form.get("notes", "").strip()
+
+        error = None
+        if not title:
+            error = "Title is required."
+        elif not amount_str:
+            error = "Amount is required."
+        else:
+            try:
+                amount = float(amount_str)
+                if amount <= 0:
+                    error = "Amount must be greater than zero."
+            except ValueError:
+                error = "Please enter a valid amount."
+        if not error and not category:
+            error = "Category is required."
+        if not error and not date:
+            error = "Date is required."
+
+        if error:
+            return render_template(
+                "expense_form.html", mode="add", error=error,
+                form=request.form, categories=CATEGORIES, payment_methods=PAYMENT_METHODS,
+            )
+
+        add_expense_record(
+            session["user_id"], title, float(amount_str),
+            category, date, payment_method or None, notes or None,
+        )
+        flash("Expense added successfully.", "success")
+        return redirect(url_for("expenses"))
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    return render_template(
+        "expense_form.html", mode="add",
+        categories=CATEGORIES, payment_methods=PAYMENT_METHODS, today=today,
+    )
 
 
-@app.route("/expenses/<int:id>/edit")
+@app.route("/expenses/<int:id>/edit", methods=["GET", "POST"])
 def edit_expense(id):
-    return "Edit expense — coming in Step 8"
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    expense = get_expense_by_id(id, session["user_id"])
+    if not expense:
+        flash("Expense not found.", "error")
+        return redirect(url_for("expenses"))
+
+    if request.method == "POST":
+        title          = request.form.get("title", "").strip()
+        amount_str     = request.form.get("amount", "").strip()
+        category       = request.form.get("category", "").strip()
+        date           = request.form.get("date", "").strip()
+        payment_method = request.form.get("payment_method", "").strip()
+        notes          = request.form.get("notes", "").strip()
+
+        error = None
+        if not title:
+            error = "Title is required."
+        elif not amount_str:
+            error = "Amount is required."
+        else:
+            try:
+                amount = float(amount_str)
+                if amount <= 0:
+                    error = "Amount must be greater than zero."
+            except ValueError:
+                error = "Please enter a valid amount."
+        if not error and not category:
+            error = "Category is required."
+        if not error and not date:
+            error = "Date is required."
+
+        if error:
+            return render_template(
+                "expense_form.html", mode="edit", expense=expense, error=error,
+                form=request.form, categories=CATEGORIES, payment_methods=PAYMENT_METHODS,
+            )
+
+        update_expense_record(
+            id, session["user_id"], title, float(amount_str),
+            category, date, payment_method or None, notes or None,
+        )
+        flash("Expense updated successfully.", "success")
+        return redirect(url_for("expenses"))
+
+    return render_template(
+        "expense_form.html", mode="edit", expense=expense,
+        categories=CATEGORIES, payment_methods=PAYMENT_METHODS,
+    )
 
 
-@app.route("/expenses/<int:id>/delete")
+@app.route("/expenses/<int:id>/delete", methods=["POST"])
 def delete_expense(id):
-    return "Delete expense — coming in Step 9"
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    expense = get_expense_by_id(id, session["user_id"])
+    if not expense:
+        flash("Expense not found.", "error")
+    else:
+        delete_expense_record(id, session["user_id"])
+        flash(f"“{expense['title']}” deleted.", "success")
+    return redirect(url_for("expenses"))
 
 
 with app.app_context():

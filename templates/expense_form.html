@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit Expense" if mode == "edit" else "Add Expense" }} — Spendly{% endblock %}
+
+{% block content %}
+<div class="profile-page">
+    <div class="expense-form-wrap">
+
+        <div class="profile-header">
+            <h1 class="profile-title">
+                {{ "Edit Expense" if mode == "edit" else "Add Expense" }}
+            </h1>
+            <p class="profile-subtitle">
+                {{ "Update the details of this transaction." if mode == "edit" else "Record a new transaction to your ledger." }}
+            </p>
+        </div>
+
+        <div class="profile-card">
+
+            {% if error %}
+                <div class="flash flash-error">{{ error }}</div>
+            {% endif %}
+
+            {# Resolve display values: prefer re-posted form data on validation error, then existing expense, then blank #}
+            {% set v_title   = form.title          if form else (expense.title          if expense else '') %}
+            {% set v_amount  = form.amount         if form else (expense.amount         if expense else '') %}
+            {% set v_cat     = form.category       if form else (expense.category       if expense else '') %}
+            {% set v_date    = form.date           if form else (expense.date           if expense else (today|default(''))) %}
+            {% set v_payment = form.payment_method if form else (expense.payment_method if expense else '') %}
+            {% set v_notes   = form.notes          if form else (expense.notes          if expense else '') %}
+
+            <form method="POST">
+
+                <!-- Title -->
+                <div class="form-group">
+                    <label for="title">Title <span style="color: var(--danger);">*</span></label>
+                    <input
+                        type="text"
+                        id="title"
+                        name="title"
+                        class="form-input"
+                        placeholder="e.g. Lunch at office, Metro card top-up…"
+                        value="{{ v_title }}"
+                        maxlength="120"
+                        required
+                        autofocus
+                    >
+                </div>
+
+                <!-- Amount + Category -->
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="amount">Amount (₹) <span style="color: var(--danger);">*</span></label>
+                        <input
+                            type="number"
+                            id="amount"
+                            name="amount"
+                            class="form-input"
+                            placeholder="0.00"
+                            value="{{ v_amount }}"
+                            min="0.01"
+                            step="0.01"
+                            required
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label for="category">Category <span style="color: var(--danger);">*</span></label>
+                        <select id="category" name="category" class="form-input" required>
+                            <option value="" disabled {{ 'selected' if not v_cat else '' }}>Select category</option>
+                            {% for cat in categories %}
+                                <option value="{{ cat }}" {{ 'selected' if v_cat == cat else '' }}>{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Date + Payment Method -->
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="date">Date <span style="color: var(--danger);">*</span></label>
+                        <input
+                            type="date"
+                            id="date"
+                            name="date"
+                            class="form-input"
+                            value="{{ v_date }}"
+                            required
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label for="payment_method">Payment Method</label>
+                        <select id="payment_method" name="payment_method" class="form-input">
+                            <option value="" {{ 'selected' if not v_payment else '' }}>— Select method —</option>
+                            {% for method in payment_methods %}
+                                <option value="{{ method }}" {{ 'selected' if v_payment == method else '' }}>{{ method }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="form-group">
+                    <label for="notes">Notes <span style="color: var(--ink-faint); font-weight: 400;">(optional)</span></label>
+                    <textarea
+                        id="notes"
+                        name="notes"
+                        class="form-input"
+                        placeholder="Any extra details — merchant name, occasion, split with someone…"
+                        maxlength="400"
+                    >{{ v_notes }}</textarea>
+                </div>
+
+                <!-- Actions -->
+                <div class="form-actions">
+                    <a href="{{ url_for('expenses') }}" class="btn-ghost">Cancel</a>
+                    <button type="submit" class="btn-primary">
+                        {{ "Save Changes" if mode == "edit" else "Add Expense" }}
+                    </button>
+                </div>
+
+            </form>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

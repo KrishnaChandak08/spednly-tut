@@ -1,0 +1,554 @@
+{% extends "base.html" %}
+{% block title %}My Expenses — Spendly{% endblock %}
+
+{% block content %}
+<div class="profile-page">
+    <div class="profile-wrap">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}{% for category, message in messages %}
+                <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}{% endif %}
+        {% endwith %}
+
+        <div class="profile-header">
+            <h1 class="profile-title">My Expenses</h1>
+            <p class="profile-subtitle">All your recorded transactions</p>
+        </div>
+
+        <!-- ── Stat cards ─────────────────────────────────── -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-card-icon stat-icon-spend">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+                    </svg>
+                </div>
+                <div class="stat-card-value">₹{{ monthly_total | inr }}</div>
+                <div class="stat-card-label">This Month</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-icon stat-icon-count">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z" />
+                    </svg>
+                </div>
+                <div class="stat-card-value stat-card-value-text">{{ expense_count }}</div>
+                <div class="stat-card-label">Total Expenses</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-icon stat-icon-cat">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+                    </svg>
+                </div>
+                <div class="stat-card-value stat-card-value-text">{{ top_category }}</div>
+                <div class="stat-card-label">Top Category</div>
+            </div>
+        </div>
+
+        <!-- ── Monthly comparison bar chart ──────────────── -->
+        <div class="profile-card">
+            <div class="profile-card-title">
+                <svg class="title-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+                </svg>
+                Monthly Comparison
+                {% if mom_direction %}
+                    <span class="mom-badge mom-{{ mom_direction }}">
+                        {% if mom_direction == 'up'   %}↑ {{ mom_pct }}% vs last month
+                        {% elif mom_direction == 'down' %}↓ {{ mom_pct }}% vs last month
+                        {% elif mom_direction == 'flat' %}= Same as last month
+                        {% elif mom_direction == 'new'  %}First month on record
+                        {% endif %}
+                    </span>
+                {% endif %}
+                <select class="form-input year-select"
+                        onchange="location.href='?year='+this.value"
+                        aria-label="Select year">
+                    {% for y in available_years %}
+                    <option value="{{ y }}" {{ 'selected' if y == selected_year else '' }}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {% if monthly_bars %}
+                <div class="bar-chart" id="bar-chart">
+                    {% for bar in monthly_bars %}
+                    <div class="bar-col {{ 'bar-col-current' if (loop.last and selected_year == current_year) else '' }}"
+                         data-month="{{ bar.month }}"
+                         data-label="{{ bar.label_full }}">
+                        <span class="bar-amount-label">
+                            {%- if bar.total > 0 %}{{ bar.total | inr_compact }}{% endif -%}
+                        </span>
+                        <div class="bar-fill" style="height: {{ bar.height }}px;"></div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="bar-month-labels">
+                    {% for bar in monthly_bars %}
+                    <div class="bar-month-label {{ 'active' if (loop.last and selected_year == current_year) else '' }}"
+                         data-month="{{ bar.month }}">{{ bar.label }}</div>
+                    {% endfor %}
+                </div>
+                <p class="bar-hint">Click a bar to filter transactions · Showing {{ selected_year }}</p>
+            {% else %}
+                <p class="empty-state" style="padding: 1.5rem 0;">No spending data yet.</p>
+            {% endif %}
+        </div>
+
+        <!-- ── Transactions + Compare tabbed card ────────── -->
+        <div class="profile-card">
+
+            <!-- Tab bar — no filter badge here, it lives inside the panel -->
+            <div class="tab-bar">
+                <button class="tab-btn active" data-tab="transactions">
+                    <svg style="width:14px;height:14px;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                    </svg>
+                    Transactions
+                </button>
+                <button class="tab-btn" data-tab="compare">
+                    <svg style="width:14px;height:14px;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                    </svg>
+                    Compare
+                </button>
+                <div style="margin-left: auto; padding: 0.65rem 0;">
+                    <a href="{{ url_for('add_expense') }}" class="btn-primary" style="font-size:0.85rem;padding:0.4rem 1rem;">+ Add Expense</a>
+                </div>
+            </div>
+
+            <!-- ── Transactions panel ── -->
+            <div class="tab-panel active" data-panel="transactions">
+
+                <!-- Filter banner shown when a bar-chart month is selected -->
+                <div class="filter-banner" id="filter-banner" hidden>
+                    <svg style="width:14px;height:14px;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
+                    </svg>
+                    Filtering: <strong id="filter-text"></strong>
+                    <button class="filter-banner-clear" id="filter-clear" aria-label="Clear filter">× Clear</button>
+                </div>
+
+                {% if grouped_expenses %}
+                    <table class="expense-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th class="col-right">Amount</th>
+                                <th class="col-right">Actions</th>
+                            </tr>
+                        </thead>
+                        {% for group in grouped_expenses %}
+                        <tbody data-month="{{ group.month }}">
+                            <tr class="month-group-row">
+                                <td colspan="5">
+                                    <span class="month-label">{{ group.label }}</span>
+                                    <span class="month-total">₹{{ group.total | inr }}</span>
+                                </td>
+                            </tr>
+                            {% for exp in group.expenses %}
+                            <tr>
+                                <td class="exp-date">{{ exp.date | friendly_date }}</td>
+                                <td><span class="text-truncate" title="{{ exp.title }}">{{ exp.title }}</span></td>
+                                <td><span class="cat-badge cat-{{ exp.category | lower }}">{{ exp.category }}</span></td>
+                                <td class="col-right exp-amount">₹{{ exp.amount | inr }}</td>
+                                <td class="col-right" style="white-space:nowrap;">
+                                    <a href="{{ url_for('edit_expense', id=exp.id) }}" class="btn-ghost" style="font-size:0.78rem;padding:0.25rem 0.65rem;margin-right:0.3rem;">Edit</a>
+                                    <form method="POST" action="{{ url_for('delete_expense', id=exp.id) }}" class="delete-form" style="display:inline;">
+                                        <button type="button" class="btn-danger delete-btn" data-title="{{ exp.title }}" style="font-size:0.78rem;padding:0.25rem 0.65rem;font-family:var(--font-body);">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        {% endfor %}
+                    </table>
+                {% else %}
+                    <div class="empty-state" style="padding:3rem 0;">
+                        <svg style="width:40px;height:40px;margin:0 auto 0.75rem;display:block;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0c1.1.128 1.907 1.077 1.907 2.185Z" />
+                        </svg>
+                        <p style="margin-bottom:1.25rem;">No expenses yet. Start tracking your spending.</p>
+                        <a href="{{ url_for('add_expense') }}" class="btn-primary">Add your first expense</a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- ── Compare panel ── -->
+            <div class="tab-panel" data-panel="compare">
+
+                <!-- Sub-tab pills: Overview | Categories | Month vs Month -->
+                <div class="compare-controls">
+                    <button class="compare-sub-btn active" data-cpanel="overview">Overview</button>
+                    <button class="compare-sub-btn" data-cpanel="categories">Categories</button>
+                    <button class="compare-sub-btn" data-cpanel="mvs">Month vs Month</button>
+                </div>
+
+                <!-- Overview: 12-month card grid -->
+                <div class="compare-subpanel active" id="cpanel-overview">
+                    <div class="month-cards-grid">
+                        {% for bar in monthly_bars %}
+                        <div class="month-card {{ 'mcard-active' if bar.total > 0 else 'mcard-empty' }}">
+                            <div class="mcard-header">
+                                <span class="mcard-name">{{ bar.label_full[:3] }}</span>
+                                {% if bar.change_dir %}
+                                <span class="mcard-change change-{{ bar.change_dir }}">
+                                    {{ '↑' if bar.change_dir == 'up' else ('↓' if bar.change_dir == 'down' else '=') }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="mcard-amount {{ 'mcard-zero' if bar.total == 0 else '' }}">
+                                {{ '₹' ~ (bar.total | inr_compact) if bar.total > 0 else 'No data' }}
+                            </div>
+                            <div class="mcard-meta">
+                                {% if bar.count > 0 %}
+                                    {{ bar.count }} txn{{ 's' if bar.count != 1 else '' -}}
+                                    {%- if bar.change is not none %}&nbsp;·&nbsp;<span class="change-{{ bar.change_dir }}">{{ bar.change | abs }}%</span>{% endif %}
+                                {% else %}
+                                    <span style="color:var(--ink-faint);">—</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if year_total > 0 %}
+                    <p style="font-size:0.78rem;color:var(--ink-muted);text-align:right;margin-top:0.75rem;padding-top:0.5rem;border-top:1px solid var(--border-soft);">
+                        {{ selected_year }} total: <strong>₹{{ year_total | inr }}</strong>
+                    </p>
+                    {% endif %}
+                </div>
+
+                <!-- Categories: chip filters + interactive bars -->
+                <div class="compare-subpanel" id="cpanel-categories">
+                    {% if compare_categories %}
+                        <div class="cat-chips-wrap" id="cat-chips">
+                            {% for cat in compare_categories %}
+                            <button class="cat-chip active" data-cat="{{ cat.category }}">{{ cat.category }}</button>
+                            {% endfor %}
+                        </div>
+                        <div id="cat-bars">
+                            {% for cat in compare_categories %}
+                            <div class="cat-bar-row" data-cat="{{ cat.category }}" data-total="{{ cat.total }}">
+                                <div>
+                                    <span class="cat-badge cat-{{ cat.category | lower }}">{{ cat.category }}</span>
+                                    <div style="font-size:0.68rem;color:var(--ink-muted);margin-top:0.12rem;">{{ cat.count }} expense{{ 's' if cat.count != 1 else '' }}</div>
+                                </div>
+                                <div class="cat-bar-outer">
+                                    <div class="cat-bar-inner cat-bar-{{ cat.category | lower }}"
+                                         style="width:{{ cat.bar_w }}%"></div>
+                                </div>
+                                <div class="cat-bar-stats">
+                                    <span class="cat-bar-amount">₹{{ cat.total | inr }}</span>
+                                    <span class="cat-bar-pct">{{ cat.pct }}%</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <p class="cat-total-line" id="cat-total-line">
+                            Total: ₹{{ year_total | inr }} · {{ compare_categories | length }} categories
+                        </p>
+                    {% else %}
+                        <div class="empty-state" style="padding:2rem 0;">No spending data for {{ selected_year }}.</div>
+                    {% endif %}
+                </div>
+
+                <!-- Month vs Month -->
+                <div class="compare-subpanel" id="cpanel-mvs">
+                    {% set active_months = monthly_bars | selectattr('total', '>', 0) | list %}
+                    {% if active_months | length >= 1 %}
+                        <div class="mvs-selector-row">
+                            <div class="mvs-col">
+                                <label class="mvs-label">Month A</label>
+                                <select id="mvs-a" class="form-input mvs-select">
+                                    {% for bar in monthly_bars if bar.total > 0 %}
+                                    <option value="{{ bar.month }}">{{ bar.label_full }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mvs-vs">vs</div>
+                            <div class="mvs-col">
+                                <label class="mvs-label">Month B</label>
+                                <select id="mvs-b" class="form-input mvs-select">
+                                    {% for bar in monthly_bars if bar.total > 0 %}
+                                    <option value="{{ bar.month }}" {{ 'selected' if loop.index == 2 else '' }}>{{ bar.label_full }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div id="mvs-result"></div>
+                    {% else %}
+                        <div class="empty-state" style="padding:2rem 0;">No spending data for {{ selected_year }}.</div>
+                    {% endif %}
+                </div>
+
+                <!-- JSON blobs for JS (not rendered) -->
+                <script id="cat-matrix-json" type="application/json">{{ monthly_cat_matrix | tojson }}</script>
+                <script id="month-totals-json" type="application/json">{{ monthly_bars | tojson }}</script>
+
+            </div><!-- /compare panel -->
+
+        </div><!-- /tabbed card -->
+
+    </div>
+</div>
+
+<!-- Delete confirmation modal (moved to body by JS to escape transform ancestors) -->
+<div id="delete-modal" class="modal-overlay" hidden>
+    <div class="modal-box">
+        <div class="modal-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+            </svg>
+        </div>
+        <h3 class="modal-title">Delete expense?</h3>
+        <p class="modal-body">You're about to delete <strong id="modal-expense-title"></strong>. This cannot be undone.</p>
+        <div class="modal-actions">
+            <button type="button" class="btn-ghost" id="modal-cancel">Cancel</button>
+            <button type="button" class="btn-danger" id="modal-confirm">Yes, delete it</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Helpers ─────────────────────────────────────────────── */
+function fmtINR(v) {
+    return '₹' + parseFloat(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/* ── Delete modal ─────────────────────────────────────────── */
+(function () {
+    var overlay     = document.getElementById('delete-modal');
+    var titleEl     = document.getElementById('modal-expense-title');
+    var cancelBtn   = document.getElementById('modal-cancel');
+    var confirmBtn  = document.getElementById('modal-confirm');
+    var pendingForm = null;
+
+    document.body.appendChild(overlay);
+
+    document.querySelectorAll('.delete-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            pendingForm = btn.closest('.delete-form');
+            titleEl.textContent = '"' + btn.dataset.title + '"';
+            overlay.hidden = false;
+        });
+    });
+
+    cancelBtn.addEventListener('click', closeModal);
+    confirmBtn.addEventListener('click', function () { if (pendingForm) pendingForm.submit(); });
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+
+    function closeModal() { overlay.hidden = true; pendingForm = null; }
+})();
+
+/* ── Main tab switching ───────────────────────────────────── */
+(function () {
+    document.querySelectorAll('.tab-btn[data-tab]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.tab-btn[data-tab]').forEach(function (b)   { b.classList.remove('active'); });
+            document.querySelectorAll('.tab-panel[data-panel]').forEach(function (p) { p.classList.remove('active'); });
+            btn.classList.add('active');
+            document.querySelector('.tab-panel[data-panel="' + btn.dataset.tab + '"]').classList.add('active');
+        });
+    });
+})();
+
+/* ── Compare sub-tab switching ───────────────────────────── */
+(function () {
+    document.querySelectorAll('.compare-sub-btn[data-cpanel]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.compare-sub-btn').forEach(function (b) { b.classList.remove('active'); });
+            document.querySelectorAll('.compare-subpanel').forEach(function (p) { p.classList.remove('active'); });
+            btn.classList.add('active');
+            var panel = document.getElementById('cpanel-' + btn.dataset.cpanel);
+            if (panel) {
+                panel.classList.add('active');
+                if (btn.dataset.cpanel === 'mvs') renderMVS();
+            }
+        });
+    });
+})();
+
+/* ── Bar chart interaction + transaction filter ───────────── */
+(function () {
+    var chart = document.getElementById('bar-chart');
+    if (!chart) return;
+
+    var bars        = Array.from(chart.querySelectorAll('.bar-col[data-month]'));
+    var monthLabels = Array.from(document.querySelectorAll('.bar-month-label[data-month]'));
+    var tbodies     = Array.from(document.querySelectorAll('.expense-table tbody[data-month]'));
+    var banner      = document.getElementById('filter-banner');
+    var bannerText  = document.getElementById('filter-text');
+    var clearBtn    = document.getElementById('filter-clear');
+    var selected    = null;
+
+    function applyFilter(month) {
+        selected = month;
+        bars.forEach(function (b) {
+            var isCurrent  = b.classList.contains('bar-col-current');
+            var isSelected = month && b.dataset.month === month;
+            b.classList.toggle('bar-col-selected', isSelected);
+            b.classList.toggle('bar-col-dimmed', !!month && !isSelected && !isCurrent);
+        });
+        monthLabels.forEach(function (lbl) {
+            lbl.classList.toggle('active', !month
+                ? lbl === monthLabels[monthLabels.length - 1]
+                : lbl.dataset.month === month);
+        });
+        tbodies.forEach(function (tb) {
+            tb.style.display = (!month || tb.dataset.month === month) ? '' : 'none';
+        });
+        if (month) {
+            var bar = bars.find(function (b) { return b.dataset.month === month; });
+            bannerText.textContent = bar ? bar.dataset.label : month;
+            banner.hidden = false;
+        } else {
+            banner.hidden = true;
+        }
+    }
+
+    bars.forEach(function (bar) {
+        bar.addEventListener('click', function () {
+            applyFilter(selected === bar.dataset.month ? null : bar.dataset.month);
+        });
+    });
+    clearBtn.addEventListener('click', function () { applyFilter(null); });
+})();
+
+/* ── Category chip filter (Compare > Categories) ─────────── */
+(function () {
+    var chipsWrap = document.getElementById('cat-chips');
+    if (!chipsWrap) return;
+
+    chipsWrap.querySelectorAll('.cat-chip').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+            chip.classList.toggle('active');
+            rebuild();
+        });
+    });
+
+    function rebuild() {
+        var activeSet = new Set(
+            Array.from(chipsWrap.querySelectorAll('.cat-chip.active')).map(function (c) { return c.dataset.cat; })
+        );
+        var rows = Array.from(document.querySelectorAll('#cat-bars .cat-bar-row'));
+        var filteredTotal = 0;
+
+        rows.forEach(function (row) {
+            var on = activeSet.has(row.dataset.cat);
+            row.classList.toggle('cat-row-hidden', !on);
+            if (on) filteredTotal += parseFloat(row.dataset.total);
+        });
+
+        rows.forEach(function (row) {
+            if (row.classList.contains('cat-row-hidden')) return;
+            var total  = parseFloat(row.dataset.total);
+            var pct    = filteredTotal > 0 ? (total / filteredTotal * 100) : 0;
+            row.querySelector('.cat-bar-inner').style.width = (filteredTotal > 0 ? Math.max(3, pct) : 0) + '%';
+            row.querySelector('.cat-bar-amount').textContent = fmtINR(total);
+            row.querySelector('.cat-bar-pct').textContent    = pct.toFixed(1) + '%';
+        });
+
+        var note = document.getElementById('cat-total-line');
+        if (note) {
+            var n = activeSet.size;
+            note.textContent = 'Total: ' + fmtINR(filteredTotal) + ' · ' + n + (n === 1 ? ' category' : ' categories') + ' selected';
+        }
+    }
+})();
+
+/* ── Month vs Month comparison ───────────────────────────── */
+var _catMatrix   = null;
+var _monthTotals = null;
+
+function renderMVS() {
+    if (!_catMatrix) {
+        try { _catMatrix   = JSON.parse(document.getElementById('cat-matrix-json').textContent); } catch(e) { _catMatrix = {}; }
+        try { _monthTotals = JSON.parse(document.getElementById('month-totals-json').textContent); } catch(e) { _monthTotals = []; }
+    }
+
+    var selA   = document.getElementById('mvs-a');
+    var selB   = document.getElementById('mvs-b');
+    var result = document.getElementById('mvs-result');
+    if (!selA || !selB || !result) return;
+
+    var mA     = selA.value;
+    var mB     = selB.value;
+    var dataA  = _catMatrix[mA] || {};
+    var dataB  = _catMatrix[mB] || {};
+    var infoA  = (_monthTotals || []).find(function (m) { return m.month === mA; }) || {};
+    var infoB  = (_monthTotals || []).find(function (m) { return m.month === mB; }) || {};
+    var labelA = infoA.label_full || mA;
+    var labelB = infoB.label_full || mB;
+    var totalA = Object.values(dataA).reduce(function (s, v) { return s + v; }, 0);
+    var totalB = Object.values(dataB).reduce(function (s, v) { return s + v; }, 0);
+    var cntA   = infoA.count || 0;
+    var cntB   = infoB.count || 0;
+    var allCats = Array.from(new Set(Object.keys(dataA).concat(Object.keys(dataB)))).sort();
+
+    var html = '<div class="mvs-summary-row">';
+    html += '<div class="mvs-summary-card">'
+          + '<div class="mvs-summary-month">' + labelA + '</div>'
+          + '<div class="mvs-summary-total">' + fmtINR(totalA) + '</div>'
+          + '<div class="mvs-summary-sub">' + cntA + ' transaction' + (cntA !== 1 ? 's' : '') + '</div></div>';
+    html += '<div class="mvs-summary-card">'
+          + '<div class="mvs-summary-month">' + labelB + '</div>'
+          + '<div class="mvs-summary-total">' + fmtINR(totalB) + '</div>'
+          + '<div class="mvs-summary-sub">' + cntB + ' transaction' + (cntB !== 1 ? 's' : '') + '</div></div>';
+    html += '</div>';
+
+    if (allCats.length === 0) {
+        html += '<p class="mvs-no-data">No data available for the selected months.</p>';
+    } else {
+        html += '<table class="mvs-cat-table"><thead><tr>'
+              + '<th>Category</th><th>' + labelA + '</th><th>' + labelB + '</th><th>Change</th>'
+              + '</tr></thead><tbody>';
+
+        allCats.forEach(function (cat) {
+            var a = dataA[cat] || 0;
+            var b = dataB[cat] || 0;
+            var deltaHtml = '<span class="mvs-delta-same">—</span>';
+            if (a > 0 && b > 0) {
+                var pct = ((b - a) / a * 100).toFixed(1);
+                if (b > a)      deltaHtml = '<span class="mvs-delta-up">↑ ' + Math.abs(pct) + '%</span>';
+                else if (b < a) deltaHtml = '<span class="mvs-delta-down">↓ ' + Math.abs(pct) + '%</span>';
+                else            deltaHtml = '<span class="mvs-delta-same">= 0%</span>';
+            } else if (a === 0 && b > 0) {
+                deltaHtml = '<span class="mvs-delta-up">New ↑</span>';
+            } else if (a > 0 && b === 0) {
+                deltaHtml = '<span class="mvs-delta-down">Gone ↓</span>';
+            }
+            html += '<tr>'
+                  + '<td><span class="cat-badge cat-' + cat.toLowerCase() + '">' + cat + '</span></td>'
+                  + '<td>' + (a > 0 ? fmtINR(a) : '<span style="color:var(--ink-faint)">—</span>') + '</td>'
+                  + '<td>' + (b > 0 ? fmtINR(b) : '<span style="color:var(--ink-faint)">—</span>') + '</td>'
+                  + '<td>' + deltaHtml + '</td>'
+                  + '</tr>';
+        });
+
+        var tDelta = '';
+        if (totalA > 0 && totalB > 0) {
+            var dp = ((totalB - totalA) / totalA * 100).toFixed(1);
+            if (totalB > totalA)      tDelta = '<span class="mvs-delta-up">↑ ' + Math.abs(dp) + '%</span>';
+            else if (totalB < totalA) tDelta = '<span class="mvs-delta-down">↓ ' + Math.abs(dp) + '%</span>';
+            else                      tDelta = '<span class="mvs-delta-same">= 0%</span>';
+        }
+        html += '<tr><td>Total</td><td>' + fmtINR(totalA) + '</td><td>' + fmtINR(totalB) + '</td><td>' + tDelta + '</td></tr>';
+        html += '</tbody></table>';
+    }
+
+    result.innerHTML = html;
+}
+
+var mvsA = document.getElementById('mvs-a');
+var mvsB = document.getElementById('mvs-b');
+if (mvsA) mvsA.addEventListener('change', renderMVS);
+if (mvsB) mvsB.addEventListener('change', renderMVS);
+</script>
+{% endblock %}
