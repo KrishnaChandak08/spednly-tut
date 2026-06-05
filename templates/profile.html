@@ -1,6 +1,19 @@
 {% extends "base.html" %}
 {% block title %}Profile — Spendly{% endblock %}
 
+{% block head %}
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+{% endblock %}
+
+{% set cat_icons = {
+    'food':          '🍽️',
+    'transport':     '🚗',
+    'entertainment': '🎬',
+    'health':        '💊',
+    'utilities':     '⚡',
+    'shopping':      '🛍️',
+} %}
+
 {% block content %}
 <section class="profile-page">
     <div class="profile-wrap">
@@ -27,23 +40,41 @@
                 <div class="profile-avatar">{{ initials.upper() }}</div>
                 <div class="user-details">
                     <div class="user-full-name">{{ user['name'] }}</div>
-                    <div class="user-email-display">{{ user['email'] }}</div>
-                    {% if member_since %}<div class="user-since">Member since {{ member_since }}</div>{% endif %}
+                    <div class="user-email-display">
+                        <i data-lucide="mail" class="inline-icon"></i>{{ user['email'] }}
+                    </div>
+                    {% if member_since %}
+                    <div class="user-since">
+                        <i data-lucide="calendar" class="inline-icon"></i>Member since {{ member_since }}
+                    </div>
+                    {% endif %}
                 </div>
+                <a href="#edit-profile" class="user-edit-btn" title="Edit profile">
+                    <i data-lucide="pencil"></i>
+                </a>
             </div>
         </div>
 
         <!-- Three standalone stat cards -->
         <div class="stats-row">
             <div class="stat-card">
+                <div class="stat-card-icon stat-icon-spend">
+                    <i data-lucide="wallet"></i>
+                </div>
                 <div class="stat-card-value">₹{{ monthly_total | inr }}</div>
                 <div class="stat-card-label">Total Spent</div>
             </div>
             <div class="stat-card">
+                <div class="stat-card-icon stat-icon-count">
+                    <i data-lucide="receipt-text"></i>
+                </div>
                 <div class="stat-card-value">{{ expense_count }}</div>
                 <div class="stat-card-label">Transactions</div>
             </div>
             <div class="stat-card">
+                <div class="stat-card-icon stat-icon-cat">
+                    <i data-lucide="tag"></i>
+                </div>
                 <div class="stat-card-value stat-card-value-text">{{ top_category }}</div>
                 <div class="stat-card-label">Top Category</div>
             </div>
@@ -51,7 +82,9 @@
 
         <!-- Recent Transactions -->
         <div class="profile-card">
-            <h2 class="profile-card-title">Recent Transactions</h2>
+            <h2 class="profile-card-title">
+                <i data-lucide="clock" class="title-icon"></i> Recent Transactions
+            </h2>
             {% if recent_expenses %}
             <table class="expense-table">
                 <thead>
@@ -64,32 +97,44 @@
                 </thead>
                 <tbody>
                     {% for exp in recent_expenses %}
+                    {% set cat_key = exp.category | lower | replace(' ', '-') %}
                     <tr>
                         <td class="exp-date">{{ exp.date | friendly_date }}</td>
                         <td>{{ exp.title }}</td>
-                        <td><span class="cat-badge cat-{{ exp.category | lower | replace(' ', '-') }}">{{ exp.category }}</span></td>
+                        <td>
+                            <span class="cat-badge cat-{{ cat_key }}">
+                                {{ cat_icons.get(exp.category | lower, '📦') }} {{ exp.category }}
+                            </span>
+                        </td>
                         <td class="exp-amount col-right">₹{{ exp.amount | inr }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
             {% else %}
-            <p class="empty-state">No expenses recorded yet.</p>
+            <p class="empty-state">
+                <i data-lucide="inbox" class="empty-icon"></i><br>No expenses recorded yet.
+            </p>
             {% endif %}
         </div>
 
         <!-- Category breakdown -->
         <div class="profile-card">
-            <h2 class="profile-card-title">Spending by Category</h2>
+            <h2 class="profile-card-title">
+                <i data-lucide="bar-chart-2" class="title-icon"></i> Spending by Category
+            </h2>
             {% if category_totals %}
                 {% for cat in category_totals %}
+                {% set cat_key = cat.category | lower | replace(' ', '-') %}
                 <div class="cat-row">
                     <div class="cat-row-header">
-                        <span class="cat-badge cat-{{ cat.category | lower | replace(' ', '-') }}">{{ cat.category }}</span>
+                        <span class="cat-badge cat-{{ cat_key }}">
+                            {{ cat_icons.get(cat.category | lower, '📦') }} {{ cat.category }}
+                        </span>
                         <span class="cat-total">₹{{ cat.total | inr }}</span>
                     </div>
                     <div class="cat-bar-track">
-                        <div class="cat-bar-fill" style="width: {{ (cat.total / max_cat_total * 100) | int }}%"></div>
+                        <div class="cat-bar-fill cat-bar-{{ cat_key }}" style="width: {{ (cat.total / max_cat_total * 100) | int }}%"></div>
                     </div>
                 </div>
                 {% endfor %}
@@ -99,8 +144,10 @@
         </div>
 
         <!-- Edit profile -->
-        <div class="profile-card">
-            <h2 class="profile-card-title">Account Details</h2>
+        <div class="profile-card" id="edit-profile">
+            <h2 class="profile-card-title">
+                <i data-lucide="user-pen" class="title-icon"></i> Account Details
+            </h2>
             <form method="POST" action="{{ url_for('profile') }}">
                 <div class="form-group">
                     <label for="name">Name</label>
@@ -118,7 +165,9 @@
 
         <!-- Change password -->
         <div class="profile-card">
-            <h2 class="profile-card-title">Change Password</h2>
+            <h2 class="profile-card-title">
+                <i data-lucide="lock" class="title-icon"></i> Change Password
+            </h2>
             <form method="POST" action="{{ url_for('change_password') }}">
                 <div class="form-group">
                     <label for="current_password">Current Password</label>
@@ -141,13 +190,15 @@
 
         <!-- Danger zone -->
         <div class="profile-card danger-card">
-            <h2 class="profile-card-title danger-title">Danger Zone</h2>
+            <h2 class="profile-card-title danger-title">
+                <i data-lucide="triangle-alert" class="title-icon"></i> Danger Zone
+            </h2>
             <p class="danger-desc">
                 Permanently delete your account and all associated data.
                 This action cannot be undone.
             </p>
             <button type="button" class="btn-danger" id="show-delete-btn">
-                Delete Account
+                <i data-lucide="trash-2" class="btn-icon"></i> Delete Account
             </button>
             <form id="delete-confirm-form" method="POST"
                   action="{{ url_for('delete_account') }}" style="display:none; margin-top:1.25rem;">
@@ -156,7 +207,9 @@
                     <input type="password" id="delete_password" name="password"
                            class="form-input" required>
                 </div>
-                <button type="submit" class="btn-danger">Permanently Delete My Account</button>
+                <button type="submit" class="btn-danger">
+                    <i data-lucide="trash-2" class="btn-icon"></i> Permanently Delete My Account
+                </button>
             </form>
         </div>
 
@@ -166,6 +219,8 @@
 
 {% block scripts %}
 <script>
+    lucide.createIcons();
+
     document.getElementById('show-delete-btn').addEventListener('click', function () {
         this.style.display = 'none';
         document.getElementById('delete-confirm-form').style.display = 'block';
